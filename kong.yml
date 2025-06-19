@@ -1,0 +1,106 @@
+# Versão do formato de configuração declarativa do Kong. É importante para o Kong saber como ler este arquivo.
+_format_version: "3.0"
+
+# ------------------------------------------------------------------------------
+# 1. SERVIÇOS (SERVICES)
+# Define cada um dos serviços internos do Supabase para os quais o Kong vai redirecionar o tráfego.
+# O 'url' é a parte mais importante: aponta para o nome do serviço no Railway e sua porta interna.
+# ------------------------------------------------------------------------------
+services:
+  # Serviço de Autenticação (GoTrue)
+  - name: supabase-auth
+    url: http://auth:9999
+
+  # Serviço da API REST (PostgREST)
+  - name: supabase-rest
+    url: http://rest:3000
+
+  # Serviço de Tempo Real (Realtime)
+  - name: supabase-realtime
+    url: http://realtime:4000
+
+  # Serviço de Armazenamento de Arquivos (Storage)
+  - name: supabase-storage
+    url: http://storage:5000
+
+  # Serviço de Funções de Borda (Edge Functions)
+  - name: supabase-functions
+    url: http://functions:54321
+
+  # Serviço do Dashboard de gerenciamento (Supabase Studio)
+  # ATENÇÃO: Esta rota ficará pública. Para produção, considere adicionar um plugin de autenticação aqui.
+  - name: supabase-studio
+    url: http://studio:8000
+
+# ------------------------------------------------------------------------------
+# 2. ROTAS (ROUTES)
+# Define as URLs públicas que os usuários acessarão e as mapeia para os serviços definidos acima.
+# ------------------------------------------------------------------------------
+routes:
+  # Rota para o serviço de Autenticação
+  - name: route-auth
+    service:
+      name: supabase-auth
+    paths:
+      - /auth/v1
+
+  # Rota para o serviço da API REST
+  - name: route-rest
+    service:
+      name: supabase-rest
+    paths:
+      - /rest/v1
+
+  # Rota para o serviço de Tempo Real (suporta WebSockets)
+  - name: route-realtime
+    service:
+      name: supabase-realtime
+    paths:
+      - /realtime/v1
+
+  # Rota para o serviço de Armazenamento de Arquivos
+  - name: route-storage
+    service:
+      name: supabase-storage
+    paths:
+      - /storage/v1
+
+  # Rota para o serviço de Funções de Borda
+  - name: route-functions
+    service:
+      name: supabase-functions
+    paths:
+      - /functions/v1
+
+  # Rota para o Supabase Studio
+  - name: route-studio
+    service:
+      name: supabase-studio
+    paths:
+      - /
+
+# ------------------------------------------------------------------------------
+# 3. CONSUMERS (CONSUMIDORES)
+# Define "quem" pode usar a API. Criamos dois tipos de usuários lógicos.
+# ------------------------------------------------------------------------------
+consumers:
+  # Representa o acesso anônimo/público, usado pelo seu front-end.
+  - username: anon-consumer
+    keyauth_credentials:
+      - key: ${SUPABASE_ANON_KEY}
+
+  # Representa o acesso de administrador, usado pelo seu back-end para tarefas privilegiadas.
+  - username: service-role-consumer
+    keyauth_credentials:
+      - key: ${SUPABASE_SERVICE_KEY}
+
+# ------------------------------------------------------------------------------
+# 4. PLUGIN DE AUTENTICAÇÃO
+# Aplica a validação de chaves de API a TODAS as rotas definidas acima.
+# ------------------------------------------------------------------------------
+plugins:
+  - name: key-auth
+    # Configura o plugin para procurar pela chave no header chamado 'apikey', que é o padrão do Supabase.
+    config:
+      key_names: ["apikey"]
+      hide_credentials: true # Remove o header da chave antes de passar para o serviço final (boa prática).
